@@ -3,6 +3,15 @@
 We are working for a cricket board which wants to 
 analyse cricket match statistics in their data warehouse.
 
+Project structure:
+ipl_data_aws_lakehouse
+├───misc
+│   ├───cf_templates (Cloud formation templates to create MySQL RDS and DynamoDB)
+│   ├───input_files (Input files used fot loading to S3/MySQL/DynamoDB)
+│   └───jars (Jars used with Glue jobs)
+├───orchestration (Step function to run lake and hub load glue jobs sequentially)
+├───src (Notebooks to be used to create lake and hub load glue jobs)
+
 Cricket match data exists in three sources:
 1. DyanmoDB (for ingesting ```matches``` table)
 2. MySQL RDS (for ingesting ```deliveries``` table)
