@@ -1,0 +1,68 @@
+{
+  "Comment": "Run Glue Jobs to load lake and hub sequentially and send email notification",
+  "StartAt": "RunJob1",
+  "States": {
+    "RunJob1": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "ipl_lake_load"
+      },
+      "Next": "CheckJob1Status"
+    },
+    "CheckJob1Status": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:getJobRun",
+      "Parameters": {
+        "JobName": "ipl_lake_load",
+        "RunId.$": "$.RunJob1.JobRunId"
+      },
+      "ResultPath": "$.RunJob1",
+      "Next": "SendFailureNotification"
+    },
+    "SendFailureNotification": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.RunJob1.JobRun.Status",
+          "StringEquals": "FAILED",
+          "Next": "StopLoad"
+        }
+      ],
+      "Default": "RunJob2"
+    },
+    "StopLoad": {
+      "Type": "Fail",
+      "Cause": "The lake load Glue job failed. Stopping the load.",
+      "Error": "FirstJobFailed"
+    },
+    "RunJob2": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "ipl_hub_load"
+      },
+      "Next": "CheckJob2Status"
+    },
+    "CheckJob2Status": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:getJobRun",
+      "Parameters": {
+        "JobName": "ipl_hub_load",
+        "RunId.$": "$.RunJob2.JobRunId"
+      },
+      "ResultPath": "$.RunJob2",
+      "Next": "SendEmailNotification"
+    },
+    "SendEmailNotification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:us-east-1:123456789012:MyNotificationTopic",
+        "Subject": "Glue Jobs Completion",
+        "Message": "Both lake and hub load glue jobs have completed. Job 1 status: <$.RunJob1.JobRun.Status>. Job 2 status: <$.RunJob2.JobRun.Status>."
+      },
+      "End": true
+    }
+  }
+}
